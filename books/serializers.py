@@ -83,3 +83,36 @@ class BookReadSerializer(serializers.ModelSerializer):
 
     def get_available_copies(self, obj):
         return obj.copies.filter(is_available=True).count()
+
+
+class BookUpdateSerializer(serializers.ModelSerializer):
+    author_id = serializers.PrimaryKeyRelatedField(
+        queryset=Author.objects.all(),
+        source='author',
+        required=False
+    )
+
+    class Meta:
+        model = Book
+        fields = [
+            'title',
+            'isbn',
+            'published_year',
+            'language',
+            'page_count',
+            'tag',
+            'author_id'
+        ]
+        extra_kwargs = {
+            'title': {'required': False},
+            'isbn': {'required': False},
+            'published_year': {'required': False},
+            'language': {'required': False},
+            'page_count': {'required': False},
+            'tag': {'required': False},
+        }
+
+    def validate_published_year(self, value):
+        if value is not None and (value < 1000 or value > 2026):
+            raise serializers.ValidationError("Published year must be a valid historical year up to the present.")
+            return value
