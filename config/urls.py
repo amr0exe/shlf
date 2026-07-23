@@ -22,4 +22,5 @@ urlpatterns = [
 
     # add - on
     path('api/authors/', include('authors.urls')),
+    path('api/books/', include('books.urls'))
 ]
