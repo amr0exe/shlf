@@ -1,12 +1,20 @@
 from rest_framework import serializers
-from .models import Book
+from .models import Book, BookCopy
 from authors.models import Author
+from django.db import transaction
 
 class BookCreateSerializer(serializers.ModelSerializer):
     author_id = serializers.PrimaryKeyRelatedField(
         queryset=Author.objects.all(),
         source='author',
         write_only=True
+    )
+
+    copy_count = serializers.IntegerField(
+        write_only=True,
+        default=1,
+        min_value=1,
+        max_value=50
     )
 
     class Meta:
@@ -18,7 +26,8 @@ class BookCreateSerializer(serializers.ModelSerializer):
             'language',
             'page_count',
             'tag',
-            'author_id'
+            'author_id',
+            'copy_count'
         ]
 
     def validate_published_year(self, value):
@@ -29,6 +38,18 @@ class BookCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Published year must be valid historical year up to the present.")
         return value
 
+    def create(self, validated_data):
+        copy_count = validated_data.pop('copy_count', 1)
+
+        with transaction.atomic():
+            book = Book.objects.create(**validated_data)
+
+            copies = [BookCopy(book=book, is_available=True) for _ in range(copy_count)]
+            BookCopy.objects.bulk_create(copies)
+
+        return book
+
+
 class AuthorInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
@@ -37,6 +58,9 @@ class AuthorInfoSerializer(serializers.ModelSerializer):
 
 class BookReadSerializer(serializers.ModelSerializer):
     author = AuthorInfoSerializer(read_only=True)
+
+    total_copies = serializers.SerializerMethodField()
+    available_copies = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
@@ -48,6 +72,14 @@ class BookReadSerializer(serializers.ModelSerializer):
             'language',
             'page_count',
             'author',
+            'total_copies',
+            'available_copies',
             'created_at',
             'updated_at'
         ]
+
+    def get_total_copies(self, obj):
+        return obj.copies.count()
+
+    def get_available_copies(self, obj):
+        return obj.copies.filter(is_available=True).count()
