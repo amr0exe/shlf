@@ -58,3 +58,16 @@ class BorrowingReadSerializer(serializers.ModelSerializer):
             'returned_at',
             'status'
         ]
+
+class BorrowReturnSerializer(serializers.Serializer):
+    borrowing_id = serializers.PrimaryKeyRelatedField(
+        queryset=Borrowing.objects.all(),
+        source='borrowing'
+    )
+
+    def validate_borrowing_id(self, borrowing):
+        if borrowing.status == Borrowing.BorrowStatus.RETURNED:
+            raise serializers.ValidationError(
+                f"Borrow record ID {borrowing.id} has already been returned."
+            )
+        return borrowing
