@@ -9,3 +9,5 @@
   ```bash
   docker compose up -d --build
   ```
+
+- testing api endpoints: [requets.md](requets.md)
